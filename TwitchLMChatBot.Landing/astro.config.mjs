@@ -6,5 +6,5 @@ import tailwind from '@astrojs/tailwind';
 
 export default defineConfig({
   integrations: [react(), tailwind()],
-  outDir: './../docs',
+  outDir: './../landing-static',
 });
