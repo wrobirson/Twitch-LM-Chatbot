@@ -110,7 +110,7 @@ export function LandingPage() {
               </div>
               <div className="w-full max-w-sm space-y-2">
                 <a href="https://wrobirson.itch.io/twitch-lm-chatbot">
-                  <Button size={'lg'} variant={'default'}>Donwload</Button>
+                  <Button size={'lg'} variant={'default'}>Download</Button>
                 </a>
               </div>
             </div>
