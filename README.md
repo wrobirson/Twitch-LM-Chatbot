@@ -125,7 +125,7 @@ To deploy the bot:
 
 3. **Launch the Bot**
 
-   Start the bot and begin interacting with your Twitch chat.
+   To start using the bot, run `TwitchLMChatBot.Server.exe`. Then, open your browser and go to `https://localhost:5001/`. Link your Twitch account, and once connected, you can begin interacting with your Twitch chat by using the `!ia` command.
 
 ## Contributing
 
