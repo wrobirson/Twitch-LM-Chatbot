@@ -70,6 +70,7 @@ namespace TwitchLMChatBot.Server.Controllers
         {
             var command = _commandRespository.FindById(id);
             command.Name = request.Name;
+            command.UsingAI = request.UsingAI;
             command.Response = request.Response;
             _commandRespository.Update(command);
             return NoContent();

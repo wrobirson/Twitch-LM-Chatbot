@@ -27,10 +27,9 @@ function App() {
                     <div className="p-5">
                         <Row gutter={16}>
                             <Col md={8}>
-                                <AccountLinkingView/>
-                                <CommandsView  className="mt-4"/>
-                                <ProvidersView className="mt-4"/>
-                                <PermissionsView className="mt-4"/>
+                                <CommandsView  className="mb-4"/>
+                                <ProvidersView className="mb-4"/>
+                                <PermissionsView className="mb-4"/>
                             </Col>
                             <Col md={16}>
                                 <PersonalitiesView/>
