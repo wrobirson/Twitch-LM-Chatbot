@@ -6,6 +6,7 @@ import {QueryClient, QueryClientConfig, QueryClientProvider} from "@tanstack/rea
 import ProvidersView from "./components/ProvidersView.tsx";
 import PersonalitiesView from "./components/PersonalitiesView.tsx";
 import {PermissionsView} from "@/components/PermissionsView.tsx";
+import CommandsView from "@/components/CommandsView.tsx";
 
 function App() {
 
@@ -27,6 +28,7 @@ function App() {
                         <Row gutter={16}>
                             <Col md={8}>
                                 <AccountLinkingView/>
+                                <CommandsView  className="mt-4"/>
                                 <ProvidersView className="mt-4"/>
                                 <PermissionsView className="mt-4"/>
                             </Col>

@@ -6,5 +6,6 @@
         public const string Providers = "providers";
         public const string Accounts = "accounts";
         public const string AccessControl = "accessControl";
+        public const string Commands = "commans";
     }
 }

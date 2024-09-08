@@ -1,5 +1,5 @@
 import {DeleteFilled, PlusOutlined} from "@ant-design/icons";
-import {Button, Card,  Dropdown, Flex, Popconfirm, Result, Space, Table,} from "antd";
+import {Button, Card, Dropdown, Flex, Popconfirm, Result, Space, Table,} from "antd";
 import {useState} from "react";
 import {FaComputer} from "react-icons/fa6";
 import {PiOpenAiLogoLight} from "react-icons/pi";
@@ -10,6 +10,7 @@ import {OpenAIConfigModal} from "@/components/OpenAIConfigModal.tsx";
 import {LmStudioConfigModal} from "@/components/LmStudioConfigModal.tsx";
 import {Provider} from "@/api/types/provider.ts";
 import {useTranslation} from "react-i18next";
+import {WidgetTitle} from "@/components/WidgetTitle.tsx";
 
 type ProvidersViewProps={
     className?: string
@@ -56,9 +57,7 @@ function ProvidersView(props: ProvidersViewProps) {
                 {providersQuery.isSuccess && <>
                     <div style={{padding: 24}}>
                         <Flex gap={16} justify="space-between">
-                            <div className=" flex-grow-1">
-                                <div className="text-2xl font-bold">{t("Providers")}</div>
-                            </div>
+                            <WidgetTitle>Providers</WidgetTitle>
                             <Dropdown
                                 menu={{
                                     items: [
