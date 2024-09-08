@@ -760,6 +760,9 @@
             "type": "string",
             "nullable": true
           },
+          "usingAI": {
+            "type": "boolean"
+          },
           "response": {
             "type": "string",
             "nullable": true
@@ -776,6 +779,9 @@
           "name": {
             "type": "string",
             "nullable": true
+          },
+          "usingAI": {
+            "type": "boolean"
           },
           "response": {
             "type": "string",
@@ -947,6 +953,9 @@
           "name": {
             "type": "string",
             "nullable": true
+          },
+          "usingAI": {
+            "type": "boolean"
           },
           "response": {
             "type": "string",

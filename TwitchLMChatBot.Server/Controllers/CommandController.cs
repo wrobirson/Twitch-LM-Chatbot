@@ -33,8 +33,10 @@ namespace TwitchLMChatBot.Server.Controllers
         public class CreateCommandRequest
         {
             public string Name { get; set; }
+
+            public bool UsingAI { get; set; }
+
             public string Response { get; set; }
-          
         }
 
         [HttpPost(Name =nameof(CreateCommand))]
@@ -55,6 +57,8 @@ namespace TwitchLMChatBot.Server.Controllers
         public class UpdateCommandRequest
         {
             public string Name { get; set; }
+
+            public bool UsingAI { get; set; }
 
             public string Response { get; set; }
         }

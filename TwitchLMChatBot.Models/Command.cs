@@ -10,8 +10,11 @@ namespace TwitchLMChatBot.Models
     {
         public string Name { get; set; }
 
+        public bool UsingAI { get; set; }
+
         public string Response { get; set; }
 
         public bool IsEnabled { get; set; }
+
     }
 }

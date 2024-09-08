@@ -18,6 +18,7 @@ namespace TwitchLMChatBot.Application
 {
     internal class ChatBot : IChatBot
     {
+        private readonly IConfiguration configuration;
         private readonly ITwitchClient _twitchClient;
         private readonly ILogger<ChatBot> _logger;
         private readonly IAccountRepository _accountRepository;
@@ -27,6 +28,7 @@ namespace TwitchLMChatBot.Application
         private readonly ITwitchApp _twitchApp;
         private readonly IReplyService _replyService;
         private readonly IAccessControlService _accessControlService;
+        private readonly ICommandRespository _commandRespository;
 
         public ChatBot(
             IConfiguration configuration,
@@ -38,18 +40,21 @@ namespace TwitchLMChatBot.Application
             TwitchAPI twitchAPI,
             ITwitchApp twitchApp,
             IReplyService chatClient,
-            IAccessControlService accessControlService)
+            IAccessControlService accessControlService,
+            ICommandRespository commandRespository)
         {
 
             _logger = logger;
             _accountRepository = accountRepository;
             _providerRepository = providerRepository;
             _personalityRepository = personalityRepository;
+            this.configuration = configuration;
             _twitchClient = twitchClient;
             _twitchAPI = twitchAPI;
             _twitchApp = twitchApp;
             _replyService = chatClient;
             this._accessControlService = accessControlService;
+            this._commandRespository = commandRespository;
         }
 
         public async Task<bool> Connect()
@@ -100,11 +105,36 @@ namespace TwitchLMChatBot.Application
         {
             var joinedChannel = _twitchClient.JoinedChannels.First();
             var (command, message) = ExtractCommandAndMessage(e.ChatMessage.Message);
+            var commands = _commandRespository.FindAll();
 
-            if (command == ("!ping"))
-            {
-                _twitchClient.SendReply(_twitchClient.JoinedChannels.First(), e.ChatMessage.Id, "Pong");
+            var commandWithoutSymbol = command.Trim('!');
+            var commandFound = commands.FirstOrDefault(a => a.Name == commandWithoutSymbol);
+            if (commandFound == null) {
+               _logger.LogInformation($"{command} ignored. No command regisry found.");
+               return;
             }
+
+            if (commandFound.UsingAI)
+            {
+                var personaltity = _personalityRepository.GetDefault();
+                var provider = _providerRepository.GetDefault();
+                var prompt = commandFound.Response
+                   .Replace("{user}", e.ChatMessage.Username)
+                   .Replace("{input}", message);
+                var response = await GetChatResponse(provider, personaltity, prompt);
+                var chunks = SplitTextIntoChunks(response);
+                _twitchClient.SendReply(_twitchClient.JoinedChannels.First(), e.ChatMessage.Id,
+                  response);
+            }
+            else
+            {
+                var response = commandFound.Response
+                    .Replace("{user}", e.ChatMessage.Username)
+                    .Replace("{input}", message);
+                _twitchClient.SendReply(_twitchClient.JoinedChannels.First(), e.ChatMessage.Id,
+                    response);
+            }
+
 
             if (command == ("!ia")  )
             {

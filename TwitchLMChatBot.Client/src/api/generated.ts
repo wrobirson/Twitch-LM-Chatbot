@@ -35,12 +35,14 @@ export interface Command {
   /** @format int32 */
   id?: number;
   name?: string | null;
+  usingAI?: boolean;
   response?: string | null;
   isEnabled?: boolean;
 }
 
 export interface CreateCommandRequest {
   name?: string | null;
+  usingAI?: boolean;
   response?: string | null;
 }
 
@@ -104,6 +106,7 @@ export interface SetAccessControlRequest {
 
 export interface UpdateCommandRequest {
   name?: string | null;
+  usingAI?: boolean;
   response?: string | null;
 }
 
