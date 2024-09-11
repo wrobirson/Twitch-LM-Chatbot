@@ -18,7 +18,7 @@ namespace TwitchLMChatBot.Application
 {
     internal class ChatBot : IChatBot
     {
-        private readonly IConfiguration configuration;
+        private readonly IConfiguration _configuration;
         private readonly ITwitchClient _twitchClient;
         private readonly ILogger<ChatBot> _logger;
         private readonly IAccountRepository _accountRepository;
@@ -48,13 +48,13 @@ namespace TwitchLMChatBot.Application
             _accountRepository = accountRepository;
             _providerRepository = providerRepository;
             _personalityRepository = personalityRepository;
-            this.configuration = configuration;
+            _configuration = configuration;
             _twitchClient = twitchClient;
             _twitchAPI = twitchAPI;
             _twitchApp = twitchApp;
             _replyService = chatClient;
-            this._accessControlService = accessControlService;
-            this._commandRespository = commandRespository;
+            _accessControlService = accessControlService;
+            _commandRespository = commandRespository;
         }
 
         public async Task<bool> Connect()
@@ -101,96 +101,105 @@ namespace TwitchLMChatBot.Application
                 _twitchClient.SendMessage(_twitchClient.JoinedChannels.First(), "PoroSad Twitch LM Chat Off");
             }
         }
-        private async void OnMessageReceived(object? sender, TwitchLib.Client.Events.OnMessageReceivedArgs e)
+
+        private async Task OnMessageReceived(object? sender, TwitchLib.Client.Events.OnMessageReceivedArgs e)
         {
-            var joinedChannel = _twitchClient.JoinedChannels.First();
-            var (command, message) = ExtractCommandAndMessage(e.ChatMessage.Message);
-            var commands = _commandRespository.FindAll();
-
-            var commandWithoutSymbol = command.Trim('!');
-            var commandFound = commands.FirstOrDefault(a => a.Name == commandWithoutSymbol);
-            if (commandFound == null) {
-               _logger.LogInformation($"{command} ignored. No command regisry found.");
-               return;
-            }
-
-            if (commandFound.UsingAI)
+            try
             {
-                var personaltity = _personalityRepository.GetDefault();
-                var provider = _providerRepository.GetDefault();
-                var prompt = commandFound.Response
-                   .Replace("{user}", e.ChatMessage.Username)
-                   .Replace("{input}", message);
-                var response = await GetChatResponse(provider, personaltity, prompt);
-                var chunks = SplitTextIntoChunks(response);
-                _twitchClient.SendReply(_twitchClient.JoinedChannels.First(), e.ChatMessage.Id,
-                  response);
-            }
-            else
-            {
-                var response = commandFound.Response
-                    .Replace("{user}", e.ChatMessage.Username)
-                    .Replace("{input}", message);
-                _twitchClient.SendReply(_twitchClient.JoinedChannels.First(), e.ChatMessage.Id,
-                    response);
-            }
+                var joinedChannel = new JoinedChannel(e.ChatMessage.Channel);
+                var (command, message) = ExtractCommandAndMessage(e.ChatMessage.Message);
+                var commands = _commandRespository.FindAll();
 
-
-            if (command == ("!ia")  )
-            {
-                var haveAccess = e.ChatMessage.IsBroadcaster || _accessControlService.Check(new CheckAccessRequest
+                var commandWithoutSymbol = command.Trim('!');
+                var commandFound = commands.FirstOrDefault(a => a.Name == commandWithoutSymbol);
+                if (commandFound == null)
                 {
-                    IsFollower = await IsUserFollower(e.ChatMessage.UserId, joinedChannel.Channel),
-                    IsModerator = e.ChatMessage.IsModerator,
-                    IsSubscriber = e.ChatMessage.IsSubscriber,
-                    IsVip = e.ChatMessage.IsVip
-                });
-
-                if (!haveAccess)
-                {
-                    _twitchClient.SendReply(joinedChannel, e.ChatMessage.Id, "You do not have access.");
+                    _logger.LogInformation($"{command} ignored. No command regisry found.");
                     return;
                 }
 
-                var personaltity = _personalityRepository.GetDefault();
-                var provider = _providerRepository.GetDefault();
+                var accessMap = new[]{
+                    (commandFound.Permissions.Viewers, true ),
+                    (commandFound.Permissions.Followers, await IsUserFollower(e.ChatMessage.Username, joinedChannel.Channel)),
+                    (commandFound.Permissions.Subscribers, e.ChatMessage.IsSubscriber),
+                    (commandFound.Permissions.Vips, e.ChatMessage.IsVip),
+                    (commandFound.Permissions.Moderators, e.ChatMessage.IsModerator),
+                };
 
-                if (personaltity == null)
+                bool canExecute = e.ChatMessage.IsBroadcaster || accessMap.Any(kvp => kvp.Item1 == kvp.Item2);
+
+                if (!canExecute)
                 {
-                    _logger.LogInformation("Default personality not found.");
+                    _twitchClient.SendReply(joinedChannel, e.ChatMessage.Id, "You don have permission to run this command.");
+                    _logger.LogInformation($"{e.ChatMessage.Username} can not execute command {commandFound.Name}");
                     return;
                 }
 
-                if (provider == null)
+                if (commandFound.UsingAI)
                 {
-                    _logger.LogInformation("Default provider not found.");
-                    return;
-                }
 
-                try
-                {
-                    var response = await GetChatResponse(provider, personaltity, $"El usario {e.ChatMessage.Username} dice: {message}");
-                    var chunks = SplitTextIntoChunks(response);
+                    var personaltity = _personalityRepository.GetDefault();
+                    var provider = _providerRepository.GetDefault();
 
-                    foreach (var item in chunks)
+                    if (personaltity == null)
                     {
-                        _twitchClient.SendReply(_twitchClient.JoinedChannels.First(), e.ChatMessage.Id, item);
-                        //_twitchClient.SendMessage(_twitchClient.JoinedChannels.First(),  item);
+                        _logger.LogInformation("Default personality not found.");
+                        return;
                     }
+
+                    if (provider == null)
+                    {
+                        _logger.LogInformation("Default provider not found.");
+                        return;
+                    }
+
+                    var prompt = commandFound.Response
+                       .Replace("{user}", e.ChatMessage.Username)
+                       .Replace("{input}", message);
+                    var response = await GetChatResponse(provider, personaltity, prompt);
+                    var chunks = SplitTextIntoChunks(response);
+                    _twitchClient.SendReply(joinedChannel, e.ChatMessage.Id,
+                      response);
                 }
-                catch (Exception ex)
+                else
                 {
-                    _twitchClient.SendReply(_twitchClient.JoinedChannels.First(), e.ChatMessage.Id, ex.Message);
+                    var response = commandFound.Response
+                        .Replace("{user}", e.ChatMessage.Username)
+                        .Replace("{input}", message);
+                    _twitchClient.SendReply(joinedChannel, e.ChatMessage.Id,
+                        response);
                 }
 
             }
-
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message, ex);
+            }
         }
 
-        private async Task<bool> IsUserFollower(string userId, string channel)
+        private async Task<bool> IsUserFollower(string userName, string channelName)
         {
-            var followers = await _twitchAPI.Helix.Users.GetUsersFollowsAsync(toId: channel, fromId: userId);
-            return followers.TotalFollows > 0;
+            var account = _accountRepository.GetCurrent();
+            _twitchAPI.Settings.ClientId = _twitchApp.ClientId;
+            _twitchAPI.Settings.AccessToken = account.Auth.AccessToken;
+            var user = await _twitchAPI.Helix.Users.GetUsersAsync(logins: new List<string> { userName });
+            var channel = await _twitchAPI.Helix.Users.GetUsersAsync(logins: new List<string> { channelName });
+            try
+            {
+                if (user.Users.Length > 0 && channel.Users.Length > 0)
+                {
+                    var userId = user.Users[0].Id;
+                    string channelId = channel.Users[0].Id;
+                    //var followers = await _twitchAPI.Helix.Users.GetUsersFollowsAsync(fromId: userId, toId: channelId);
+                    var followers = await _twitchAPI.Helix.Channels.GetChannelFollowersAsync(broadcasterId: channelId, userId: userId);
+                    return followers.Data.Length > 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message, ex);
+            }
+            return false;
         }
 
         private (string Command, string Message) ExtractCommandAndMessage(string chatMessage)
@@ -246,8 +255,10 @@ namespace TwitchLMChatBot.Application
             return partes;
         }
 
-        private void OnConnected(object? sender, TwitchLib.Client.Events.OnConnectedArgs e)
+        private async Task OnConnected(object? sender, TwitchLib.Client.Events.OnConnectedArgs e)
         {
+            var account = _accountRepository.GetCurrent();
+
             _twitchClient.SendMessage(_twitchClient.JoinedChannels.First(), "VoHiYo Twitch LM Chat Online ");
         }
 

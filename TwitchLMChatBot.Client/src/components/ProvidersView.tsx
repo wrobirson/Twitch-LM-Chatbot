@@ -47,7 +47,7 @@ function ProvidersView(props: ProvidersViewProps) {
         <>
             <Card
                 className={className}
-                loading={providersQuery.isLoading}
+
                 styles={{
                     body: {
                         padding: 0,

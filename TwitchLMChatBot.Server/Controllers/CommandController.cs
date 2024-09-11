@@ -37,6 +37,8 @@ namespace TwitchLMChatBot.Server.Controllers
             public bool UsingAI { get; set; }
 
             public string Response { get; set; }
+
+            public CommandPermissions Permissions { get; set; }
         }
 
         [HttpPost(Name =nameof(CreateCommand))]
@@ -47,6 +49,7 @@ namespace TwitchLMChatBot.Server.Controllers
             command.Name = request.Name;
             command.Response = request.Response;
             command.IsEnabled = true;
+            command.Permissions = request.Permissions;
             _commandRespository.Insert(command);
             return Created(Url.Action(
                 nameof(FindCommand), new { command.Id }), 
@@ -61,6 +64,9 @@ namespace TwitchLMChatBot.Server.Controllers
             public bool UsingAI { get; set; }
 
             public string Response { get; set; }
+
+            public CommandPermissions Permissions { get; set; }
+
         }
 
 
@@ -72,6 +78,7 @@ namespace TwitchLMChatBot.Server.Controllers
             command.Name = request.Name;
             command.UsingAI = request.UsingAI;
             command.Response = request.Response;
+            command.Permissions = request.Permissions;
             _commandRespository.Update(command);
             return NoContent();
         }

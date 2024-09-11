@@ -38,12 +38,22 @@ export interface Command {
   usingAI?: boolean;
   response?: string | null;
   isEnabled?: boolean;
+  permissions?: CommandPermissions;
+}
+
+export interface CommandPermissions {
+  viewers?: boolean;
+  followers?: boolean;
+  subscribers?: boolean;
+  vips?: boolean;
+  moderators?: boolean;
 }
 
 export interface CreateCommandRequest {
   name?: string | null;
   usingAI?: boolean;
   response?: string | null;
+  permissions?: CommandPermissions;
 }
 
 export interface CreatePersonalityRequest {
@@ -108,6 +118,7 @@ export interface UpdateCommandRequest {
   name?: string | null;
   usingAI?: boolean;
   response?: string | null;
+  permissions?: CommandPermissions;
 }
 
 export interface UpdatePersonalityRequest {

@@ -82,7 +82,7 @@ namespace TwitchLMChatBot.Infrastructure.Configuration
 
             services.AddScoped<ITwitchClient>(serviceProvider =>
             {
-                return new TwitchClient(logger: serviceProvider.GetService<ILogger<TwitchClient>>());
+                return new TwitchClient(loggerFactory: serviceProvider.GetService<ILoggerFactory>());
             });
 
             services.AddScoped(serviceProvider =>

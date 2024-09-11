@@ -14,7 +14,8 @@ i18n
         supportedLngs: ['es','en'],
         interpolation: {
             escapeValue: false, // not needed for react as it escapes by default
-        }
+        },
+        missingKeyHandler: false
     });
 
 

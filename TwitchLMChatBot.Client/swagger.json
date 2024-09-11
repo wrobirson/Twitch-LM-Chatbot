@@ -769,6 +769,30 @@
           },
           "isEnabled": {
             "type": "boolean"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/CommandPermissions"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CommandPermissions": {
+        "type": "object",
+        "properties": {
+          "viewers": {
+            "type": "boolean"
+          },
+          "followers": {
+            "type": "boolean"
+          },
+          "subscribers": {
+            "type": "boolean"
+          },
+          "vips": {
+            "type": "boolean"
+          },
+          "moderators": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -786,6 +810,9 @@
           "response": {
             "type": "string",
             "nullable": true
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/CommandPermissions"
           }
         },
         "additionalProperties": false
@@ -960,6 +987,9 @@
           "response": {
             "type": "string",
             "nullable": true
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/CommandPermissions"
           }
         },
         "additionalProperties": false

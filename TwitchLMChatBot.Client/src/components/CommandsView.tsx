@@ -1,20 +1,20 @@
 import {
     Button,
     Card,
-    Checkbox,
+    Checkbox, Col,
     Flex,
     Form,
     FormProps,
     Input,
     Modal,
     ModalProps,
-    Popconfirm,
+    Popconfirm, Row,
     Space,
     Table
 } from "antd";
 import {WidgetTitle} from "@/components/WidgetTitle.tsx";
 import {t} from "i18next";
-import { DeleteFilled, EditOutlined, PlusOutlined} from "@ant-design/icons";
+import {DeleteFilled, EditOutlined, PlusOutlined} from "@ant-design/icons";
 import {useState} from "react";
 import {useMutation, useQuery} from "@tanstack/react-query";
 import apiClient from "@/api";
@@ -49,9 +49,10 @@ function CommandsView({className}: CommandsViewProps) {
     return <Card className={className}>
         <Flex justify={"space-between"}>
             <WidgetTitle>Command</WidgetTitle>
-            <Button icon={<PlusOutlined/>} onClick={() => setCreateOpen(true)}>Add  </Button>
+            <Button icon={<PlusOutlined/>} onClick={() => setCreateOpen(true)}>Add </Button>
         </Flex>
         <Table
+            rowKey={'id'}
             className={'mt-2'}
             size={'small'}
             loading={fetchCommands.isLoading}
@@ -107,15 +108,39 @@ type CreateCommandProps = ModalProps & { onSuccess?: () => void }
 
 function CommandForm(props: FormProps) {
 
-    const [usingAI, setUsingAI] = useState(props?.initialValues?.usingAI?? true)
+    const [usingAI, setUsingAI] = useState(props?.initialValues?.usingAI ?? true)
+    const permissionOptions = [
+        {
+            value: "viewers",
+            label: 'Viewers'
+        },
+        {
+            value: "followers",
+            label: 'Followers'
+        },
+        {
+            value: "subscribers",
+            label: 'Subscribers'
+        },
+        {
+            value: "vips",
+            label: 'VIPs'
+        },
+        {
+            value: "moderators",
+            label: 'Moderators'
+        },
 
-    return <Form  {...props} preserve={false} layout={'vertical'}>
-        <Form.Item name={'name'} label={t("Name")} rules={[{required: true}]} className={'mb-2'}>
+    ]
+
+    return <Form  {...props}
+                  preserve={false} layout={'vertical'} >
+        <Form.Item name={'name'} label={t("Command Name")} rules={[{required: true}]} className={'mb-2'}>
             <Input prefix={"!"}/>
         </Form.Item>
 
         <Form.Item name={'usingAI'} className={'mb-2'} valuePropName={'checked'}>
-            <Checkbox onChange={(e)=> setUsingAI(e.target.checked)}>Respond with AI</Checkbox>
+            <Checkbox onChange={(e) => setUsingAI(e.target.checked)}>Respond with AI</Checkbox>
         </Form.Item>
 
         {!usingAI && (
@@ -131,6 +156,16 @@ function CommandForm(props: FormProps) {
                 <Input.TextArea/>
             </Form.Item>
         )}
+        <Form.Item label={'Permission'}  className={'m-0'}>
+            <Row>
+                {permissionOptions.map(item=> (<Col span={8}>
+                    <Form.Item name={['permissions',  item.value]} valuePropName={'checked'} className={'m-0'}>
+                        <Checkbox>{item.label}</Checkbox>
+                    </Form.Item>
+                </Col>))}
+            </Row>
+
+        </Form.Item>
 
     </Form>;
 }
@@ -138,22 +173,33 @@ function CommandForm(props: FormProps) {
 function CreateCommandModal(props: CreateCommandProps) {
     const [form] = Form.useForm();
     const createCommand = useCreateCommand()
+
     function handleSubmit(values: CreateCommandRequest) {
         createCommand.mutate({
             name: values.name,
             response: values.response,
-            usingAI: values.usingAI
+            usingAI: values.usingAI,
+            permissions: values.permissions,
         }, {
             onSuccess: () => {
                 if (props.onSuccess) props?.onSuccess()
             }
         })
     }
+
     return <Modal {...props} title={'Create Command'} onOk={() => form.submit()} destroyOnClose={true}>
         <CommandForm
             onFinish={handleSubmit} form={form}
             initialValues={{
-                usingAI: true
+                usingAI: true,
+                permission: {
+                    viewers: false,
+                    followers: false,
+                    subscribers: false,
+                    vips: false,
+                    moderators: false,
+                    broadcaster: false,
+                }
             }}/>
     </Modal>
 }
@@ -164,12 +210,14 @@ function UpdateCommandModal(props: UpdateCommandProps) {
     const [form] = Form.useForm();
     const {command, onSuccess} = props;
     const updateCommand = useUpdateCommand()
+
     function handleSubmit(values: UpdateCommandRequest) {
         updateCommand.mutate({
             id: command!.id!,
             name: values.name,
             response: values.response,
-            usingAI: values.usingAI
+            usingAI: values.usingAI,
+            permissions: values.permissions,
         }, {
             onSuccess: () => {
                 if (onSuccess) onSuccess()
@@ -184,7 +232,8 @@ function UpdateCommandModal(props: UpdateCommandProps) {
                 initialValues={{
                     name: command ? command.name : '',
                     response: command?.response,
-                    usingAI: command?.usingAI
+                    usingAI: command?.usingAI,
+                    permissions: command?.permissions
                 }}/>
         )}
     </Modal>

@@ -18,7 +18,7 @@ function PersonalitiesView() {
     const fetchPersonalities = useFetchPersonalities();
 
     return (
-        <Card loading={fetchPersonalities.isLoading}>
+        <Card >
             {fetchPersonalities.error && <Result status={'error'} title={fetchPersonalities.error.message}/>}
             {fetchPersonalities.isSuccess && (<><Flex justify="space-between">
                 <div className="text-2xl font-bold">{t("Personalities")}</div>
