@@ -12,6 +12,8 @@ namespace TwitchLMChatBot.Application.Abstractions
 
     public interface IMessageRecivedRespository : IRepository<MessageRecived>
     {
-        IEnumerable<MessageRecived> FindByUserName(string userName);
+        IEnumerable<MessageRecived> FindByUserName(string userName, int count = 5);
+
+        IEnumerable<MessageRecived> FindByDate(DateTime date, int count= 100);
     }
 }

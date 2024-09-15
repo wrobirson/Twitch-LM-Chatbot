@@ -22,6 +22,7 @@ namespace TwitchLMChatBot.Application.Configuration
             services.AddScoped<IReplyService, ReplayService>();
             services.AddScoped<IPersonalityService, PersonalityService>();
             services.AddScoped<IAccessControlService, AccessControlService>();
+            services.AddScoped<IDateTimeService, DateTimeService>();
 
             return services;
         }

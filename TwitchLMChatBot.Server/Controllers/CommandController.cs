@@ -48,6 +48,7 @@ namespace TwitchLMChatBot.Server.Controllers
             var command = new Command();
             command.Name = request.Name;
             command.Response = request.Response;
+            command.UsingAI = request.UsingAI;
             command.IsEnabled = true;
             command.Permissions = request.Permissions;
             _commandRespository.Insert(command);

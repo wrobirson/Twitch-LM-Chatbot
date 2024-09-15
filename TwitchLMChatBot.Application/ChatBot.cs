@@ -31,6 +31,7 @@ namespace TwitchLMChatBot.Application
         private readonly IAccessControlService _accessControlService;
         private readonly ICommandRespository _commandRespository;
         private readonly IMessageRecivedRespository _messageRecivedRespository;
+        private readonly IDateTimeService _dateTimeService;
 
         public ChatBot(
             IConfiguration configuration,
@@ -44,7 +45,8 @@ namespace TwitchLMChatBot.Application
             IReplyService chatClient,
             IAccessControlService accessControlService,
             ICommandRespository commandRespository,
-            IMessageRecivedRespository messageRecivedRespository)
+            IMessageRecivedRespository messageRecivedRespository,
+            IDateTimeService dateTimeService)
         {
 
             _logger = logger;
@@ -58,7 +60,8 @@ namespace TwitchLMChatBot.Application
             _replyService = chatClient;
             _accessControlService = accessControlService;
             _commandRespository = commandRespository;
-            this._messageRecivedRespository = messageRecivedRespository;
+            _messageRecivedRespository = messageRecivedRespository;
+            _dateTimeService = dateTimeService;
         }
 
         public async Task<bool> Connect()
@@ -123,6 +126,7 @@ namespace TwitchLMChatBot.Application
                 if (commandFound == null)
                 {
                     _logger.LogInformation($"{command} ignored. No command regisry found.");
+                    _twitchClient.SendReply(joinedChannel, e.ChatMessage.Id, "Command not found!");
 
                     //if (e.ChatMessage.Message.Contains(account.User.Login, StringComparison.OrdinalIgnoreCase))
                     //{
@@ -174,10 +178,6 @@ namespace TwitchLMChatBot.Application
                          if (messages.Count() > 0)
                          {
                             var joinedMessages = string.Join(".", messages.Select(a => a.Message));
-                            foreach (var item in messages)
-                            {
-                                _messageRecivedRespository.Delete(item);
-                            }
                             return joinedMessages;
                         }
                         else
@@ -185,25 +185,52 @@ namespace TwitchLMChatBot.Application
                            return string.Format("El usuario {0} no tiene mensajes registrados.", e.ChatMessage.Username);
                         }
                     }},
-                    { "allMessages", ()=>
+                    { "{allUsers}", ()=>
+                    {
+                        var date = _dateTimeService.Now;
+
+                         var usernames = _messageRecivedRespository.FindByDate(date)
+                            .Select(a=> a.UserName)
+                            .Distinct();
+
+                        if (usernames.Count() > 0)
+                        {
+                            var joinedMessages = string.Join(", ", usernames);
+                            return joinedMessages;
+                        }
+                        else
+                        {
+                           return string.Format("No hay mensajes registrado para extraer los usarios.");
+                        }
+                    } },
+                    { "{allMessages}", ()=>
                     {
                          var messages = _messageRecivedRespository.FindAll();
                          if (messages.Count() > 0)
                          {
-                            var joinedMessages = string.Join(".", messages.Select(a => $"{a.UserName}:{a.Message}"));
-                            foreach (var item in messages)
-                            {
-                                _messageRecivedRespository.Delete(item);
-                            }
+                            var joinedMessages = string.Join(".", messages.Select(a => $"{a.Message}"));
                             return joinedMessages;
                         }
                         else
                         {
                            return string.Format("No hay mesnajes registrados.");
                         }
+                    } },
+                    { "{allUsersWithMessages}", ()=>
+                    {
+                         var messages = _messageRecivedRespository.FindAll();
+                         if (messages.Count() > 0)
+                         {
+                            string joinedMessages =string.Join("\n", messages.Select(a => $"{a.UserName}:{a.Message}."));
+                            return joinedMessages ;
+                         }
+                         else
+                            {
+                           return string.Format("No hay mesnajes registrados para extraer los mensajes de cada usuario.");
+                            }
                     } }
                 };
-                
+
                 // La respuesta ya construida luego de reempalazar las variables y obtener respuesta de la IA.
                 string responseOutput = string.Empty;
 
@@ -238,7 +265,7 @@ namespace TwitchLMChatBot.Application
                 {
                     responseOutput = responseInput;
                 }
-              
+
                 var chunks = SplitTextIntoChunks(responseOutput);
                 foreach (var chunksItem in chunks)
                 {
@@ -260,7 +287,9 @@ namespace TwitchLMChatBot.Application
                 {
                     UserName = e.ChatMessage.Username,
                     Message = e.ChatMessage.Message,
+                    DateTime = DateTime.Now,
                 });
+                _logger.LogInformation("Message saved.", e.ChatMessage);
             }
         }
 

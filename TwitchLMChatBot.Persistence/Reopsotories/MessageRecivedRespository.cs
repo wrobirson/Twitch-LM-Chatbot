@@ -10,9 +10,23 @@ namespace TwitchLMChatBot.Persistence.Reopsotories
         {
         }
 
-        public IEnumerable<MessageRecived> FindByUserName(string userName)
+        public IEnumerable<MessageRecived> FindByDate(DateTime date, int count = Int32.MaxValue)
         {
-           return GetCollection().Query().Where(a=> a.UserName.ToLower() == userName.ToLower()).ToList();
+            return GetCollection().Query()
+                .Where(a => a.DateTime >= date.Date)
+                .OrderByDescending(a => a.DateTime)
+                .Limit(count)
+                .ToList();
         }
+
+        public IEnumerable<MessageRecived> FindByUserName(string userName, int count = 5)
+        {
+           return GetCollection().Query()
+                .Where(a=> a.UserName.ToLower() == userName.ToLower())
+                .OrderByDescending(a=> a.DateTime)
+                .Limit(count)
+                .ToList();
+        }
+
     }
 }
