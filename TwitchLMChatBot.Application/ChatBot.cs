@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using TwitchLib.Api;
 using TwitchLib.Api.Interfaces;
+using TwitchLib.Client.Events;
 using TwitchLib.Client.Interfaces;
 using TwitchLib.Client.Models;
 using TwitchLMChatBot.Application.Abstractions;
@@ -29,6 +30,7 @@ namespace TwitchLMChatBot.Application
         private readonly IReplyService _replyService;
         private readonly IAccessControlService _accessControlService;
         private readonly ICommandRespository _commandRespository;
+        private readonly IMessageRecivedRespository _messageRecivedRespository;
 
         public ChatBot(
             IConfiguration configuration,
@@ -41,7 +43,8 @@ namespace TwitchLMChatBot.Application
             ITwitchApp twitchApp,
             IReplyService chatClient,
             IAccessControlService accessControlService,
-            ICommandRespository commandRespository)
+            ICommandRespository commandRespository,
+            IMessageRecivedRespository messageRecivedRespository)
         {
 
             _logger = logger;
@@ -55,6 +58,7 @@ namespace TwitchLMChatBot.Application
             _replyService = chatClient;
             _accessControlService = accessControlService;
             _commandRespository = commandRespository;
+            this._messageRecivedRespository = messageRecivedRespository;
         }
 
         public async Task<bool> Connect()
@@ -106,6 +110,10 @@ namespace TwitchLMChatBot.Application
         {
             try
             {
+
+                SaveReceivedMessage(e);
+
+                var account = _accountRepository.GetCurrent();
                 var joinedChannel = new JoinedChannel(e.ChatMessage.Channel);
                 var (command, message) = ExtractCommandAndMessage(e.ChatMessage.Message);
                 var commands = _commandRespository.FindAll();
@@ -115,6 +123,16 @@ namespace TwitchLMChatBot.Application
                 if (commandFound == null)
                 {
                     _logger.LogInformation($"{command} ignored. No command regisry found.");
+
+                    //if (e.ChatMessage.Message.Contains(account.User.Login, StringComparison.OrdinalIgnoreCase))
+                    //{
+                    //    var personaltity = _personalityRepository.GetDefault();
+                    //    var provider = _providerRepository.GetDefault();
+                    //    var response = await GetChatResponse(provider, personaltity, e.ChatMessage.Message);
+                    //    //var chunks = SplitTextIntoChunks(response);
+                    //    _twitchClient.SendReply(joinedChannel, e.ChatMessage.Id,
+                    //      response);
+                    //}
                     return;
                 }
 
@@ -135,9 +153,70 @@ namespace TwitchLMChatBot.Application
                     return;
                 }
 
+                var macros = new Dictionary<string, Func<string>>()
+                {
+                    {"{commands}" , ()=>
+                    {
+                        var commands = _commandRespository.FindAll();
+                        string commandListText = string.Join(" | ", commands.Select(a=> "!" + a.Name));
+                        return commandListText;
+                    } },
+                    { "{userName}", ()=> {
+                        return e.ChatMessage.Username;
+                    }},
+
+                    { "{commandInput}", ()=> {
+                        return message;
+                    }},
+
+                    { "{userMessages}", ()=> {
+                         var messages = _messageRecivedRespository.FindByUserName(e.ChatMessage.Username);
+                         if (messages.Count() > 0)
+                         {
+                            var joinedMessages = string.Join(".", messages.Select(a => a.Message));
+                            foreach (var item in messages)
+                            {
+                                _messageRecivedRespository.Delete(item);
+                            }
+                            return joinedMessages;
+                        }
+                        else
+                        {
+                           return string.Format("El usuario {0} no tiene mensajes registrados.", e.ChatMessage.Username);
+                        }
+                    }},
+                    { "allMessages", ()=>
+                    {
+                         var messages = _messageRecivedRespository.FindAll();
+                         if (messages.Count() > 0)
+                         {
+                            var joinedMessages = string.Join(".", messages.Select(a => $"{a.UserName}:{a.Message}"));
+                            foreach (var item in messages)
+                            {
+                                _messageRecivedRespository.Delete(item);
+                            }
+                            return joinedMessages;
+                        }
+                        else
+                        {
+                           return string.Format("No hay mesnajes registrados.");
+                        }
+                    } }
+                };
+                
+                // La respuesta ya construida luego de reempalazar las variables y obtener respuesta de la IA.
+                string responseOutput = string.Empty;
+
+                // Plantilla de la respuesta que se enviara al chat 
+                string responseInput = commandFound.Response;
+
+                foreach (var item in macros)
+                {
+                    responseInput = responseInput.Replace(item.Key, item.Value.Invoke());
+                }
+
                 if (commandFound.UsingAI)
                 {
-
                     var personaltity = _personalityRepository.GetDefault();
                     var provider = _providerRepository.GetDefault();
 
@@ -153,27 +232,35 @@ namespace TwitchLMChatBot.Application
                         return;
                     }
 
-                    var prompt = commandFound.Response
-                       .Replace("{user}", e.ChatMessage.Username)
-                       .Replace("{input}", message);
-                    var response = await GetChatResponse(provider, personaltity, prompt);
-                    var chunks = SplitTextIntoChunks(response);
-                    _twitchClient.SendReply(joinedChannel, e.ChatMessage.Id,
-                      response);
+                    responseOutput = await GetChatResponse(provider, personaltity, responseInput);
                 }
                 else
                 {
-                    var response = commandFound.Response
-                        .Replace("{user}", e.ChatMessage.Username)
-                        .Replace("{input}", message);
-                    _twitchClient.SendReply(joinedChannel, e.ChatMessage.Id,
-                        response);
+                    responseOutput = responseInput;
+                }
+              
+                var chunks = SplitTextIntoChunks(responseOutput);
+                foreach (var chunksItem in chunks)
+                {
+                    _twitchClient.SendReply(joinedChannel, e.ChatMessage.Id, chunksItem);
                 }
 
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex.Message, ex);
+            }
+        }
+
+        private void SaveReceivedMessage(OnMessageReceivedArgs e)
+        {
+            if (!e.ChatMessage.Message.StartsWith("!"))
+            {
+                _messageRecivedRespository.Insert(new MessageRecived
+                {
+                    UserName = e.ChatMessage.Username,
+                    Message = e.ChatMessage.Message,
+                });
             }
         }
 
@@ -228,7 +315,7 @@ namespace TwitchLMChatBot.Application
         private List<string> SplitTextIntoChunks(string texto, int longitudMaxima = 400)
         {
             var partes = new List<string>();
-            var palabras = texto.Split(' ', '\n', '\t', '\r');
+            var palabras = texto.Split([' ', '\n', '\t', '\r'], StringSplitOptions.RemoveEmptyEntries);
             var parteActual = "";
 
             foreach (var palabra in palabras)

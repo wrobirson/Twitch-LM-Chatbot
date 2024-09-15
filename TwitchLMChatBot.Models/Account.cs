@@ -49,6 +49,4 @@
         public string TokenType { get; set; }
     }
 
-
-
 }

@@ -7,5 +7,6 @@
         public const string Accounts = "accounts";
         public const string AccessControl = "accessControl";
         public const string Commands = "commans";
+        public const string MessagesReceived = "messagesReceived";
     }
 }

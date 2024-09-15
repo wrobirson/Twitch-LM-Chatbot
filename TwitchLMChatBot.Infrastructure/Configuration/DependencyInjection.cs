@@ -79,6 +79,7 @@ namespace TwitchLMChatBot.Infrastructure.Configuration
             services.AddScoped<IAccountRepository, AccountRepository>();
             services.AddScoped<IAccessControlRepository, AccessControlRespository>();
             services.AddScoped<ICommandRespository, CommandRepository>();
+            services.AddScoped<IMessageRecivedRespository, MessageRecivedRespository>();
 
             services.AddScoped<ITwitchClient>(serviceProvider =>
             {

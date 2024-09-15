@@ -9,4 +9,9 @@ namespace TwitchLMChatBot.Application.Abstractions
         AccessControl Get();
         void Set(SetAccessControlRequest request);
     }
+
+    public interface IMessageRecivedRespository : IRepository<MessageRecived>
+    {
+        IEnumerable<MessageRecived> FindByUserName(string userName);
+    }
 }
