@@ -8,6 +8,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using TwitchLib.Api;
+using TwitchLib.Api.Helix.Models.Moderation.CheckAutoModStatus;
 using TwitchLib.Api.Interfaces;
 using TwitchLib.Client.Events;
 using TwitchLib.Client.Interfaces;
@@ -18,6 +19,7 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace TwitchLMChatBot.Application
 {
+
     internal class ChatBot : IChatBot
     {
         private readonly IConfiguration _configuration;
@@ -33,6 +35,7 @@ namespace TwitchLMChatBot.Application
         private readonly ICommandRespository _commandRespository;
         private readonly IMessageRecivedRespository _messageRecivedRespository;
         private readonly IDateTimeService _dateTimeService;
+        private readonly IMessageVariablesService _messageVariablesService;
 
         public ChatBot(
             IConfiguration configuration,
@@ -47,7 +50,8 @@ namespace TwitchLMChatBot.Application
             IAccessControlService accessControlService,
             ICommandRespository commandRespository,
             IMessageRecivedRespository messageRecivedRespository,
-            IDateTimeService dateTimeService)
+            IDateTimeService dateTimeService,
+            IMessageVariablesService messageVariablesService )
         {
 
             _logger = logger;
@@ -63,7 +67,10 @@ namespace TwitchLMChatBot.Application
             _commandRespository = commandRespository;
             _messageRecivedRespository = messageRecivedRespository;
             _dateTimeService = dateTimeService;
+            _messageVariablesService = messageVariablesService;
         }
+
+       
 
         public async Task<bool> Connect()
         {
@@ -114,7 +121,6 @@ namespace TwitchLMChatBot.Application
         {
             try
             {
-
                 SaveReceivedMessage(e);
 
                 var account = _accountRepository.GetCurrent();
@@ -156,93 +162,11 @@ namespace TwitchLMChatBot.Application
                     _logger.LogInformation($"{e.ChatMessage.Username} can not execute command {commandFound.Name}");
                     return;
                 }
-
-                var macros = new Dictionary<string, Func<string>>()
-                {
-                    {"{commands}" , ()=>
-                    {
-                        var commands = _commandRespository.FindAll();
-                        string commandListText = string.Join(" | ", commands.Select(a=> "!" + a.Name));
-                        return commandListText;
-                    } },
-                    { "{userName}", ()=> {
-                        return e.ChatMessage.Username;
-                    }},
-
-                    { "{commandInput}", ()=> {
-                        return message;
-                    }},
-
-                    { "{userMessages}", ()=> {
-                         var messages = _messageRecivedRespository.FindByUserName(e.ChatMessage.Username);
-                         if (messages.Count() > 0)
-                         {
-                            var joinedMessages = string.Join(".", messages.Select(a => a.Message));
-                            return joinedMessages;
-                        }
-                        else
-                        {
-                           return string.Format("El usuario {0} no tiene mensajes registrados.", e.ChatMessage.Username);
-                        }
-                    }},
-                    { "{allUsers}", ()=>
-                    {
-                        var date = _dateTimeService.Now;
-
-                         var usernames = _messageRecivedRespository.FindByDate(date)
-                            .Select(a=> a.UserName)
-                            .Distinct();
-
-                        if (usernames.Count() > 0)
-                        {
-                            var joinedMessages = string.Join(", ", usernames);
-                            return joinedMessages;
-                        }
-                        else
-                        {
-                           return string.Format("No hay mensajes registrado para extraer los usarios.");
-                        }
-                    } },
-                    { "{allMessages}", ()=>
-                    {
-                        var date = _dateTimeService.Now;
-                         var messages =  _messageRecivedRespository.FindByDate(date);
-                         if (messages.Count() > 0)
-                         {
-                            var joinedMessages = string.Join(".", messages.Select(a => $"{a.Message}"));
-                            return joinedMessages;
-                        }
-                        else
-                        {
-                           return string.Format("No hay mesnajes registrados.");
-                        }
-                    } },
-                    { "{allUsersWithMessages}", ()=>
-                    {
-                        var date = _dateTimeService.Now;
-                         var messages = _messageRecivedRespository.FindByDate(date);
-                         if (messages.Count() > 0)
-                         {
-                            string joinedMessages =string.Join("\n", messages.Select(a => $"{a.UserName}:{a.Message}."));
-                            return joinedMessages ;
-                         }
-                         else
-                         {
-                            return string.Format("No hay mesnajes registrados para extraer los mensajes de cada usuario.");
-                         }
-                    } }
-                };
-
                 // La respuesta ya construida luego de reempalazar las variables y obtener respuesta de la IA.
                 string responseOutput = string.Empty;
 
                 // Plantilla de la respuesta que se enviara al chat 
-                string responseInput = commandFound.Response;
-
-                foreach (var item in macros)
-                {
-                    responseInput = responseInput.Replace(item.Key, item.Value.Invoke());
-                }
+                string responseInput = _messageVariablesService.ReplaceVariables(commandFound.Response, e.ChatMessage);
 
                 if (commandFound.UsingAI)
                 {
@@ -269,6 +193,7 @@ namespace TwitchLMChatBot.Application
                 }
 
                 var chunks = SplitTextIntoChunks(responseOutput);
+
                 foreach (var chunksItem in chunks)
                 {
                     _twitchClient.SendReply(joinedChannel, e.ChatMessage.Id, chunksItem);

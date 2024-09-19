@@ -23,6 +23,7 @@ namespace TwitchLMChatBot.Application.Configuration
             services.AddScoped<IPersonalityService, PersonalityService>();
             services.AddScoped<IAccessControlService, AccessControlService>();
             services.AddScoped<IDateTimeService, DateTimeService>();
+            services.AddScoped< IMessageVariablesService , MessageVariablesService>();
 
             return services;
         }
